@@ -13,7 +13,7 @@ const __dirname = path.dirname(__filename);
 
 const PUBLIC_DIR = path.resolve(__dirname, "../public");
 
-const PORT = 3000;
+const PORT = Number(process.env.PORT) || 3001;
 
 const server = http.createServer(async (req, res) => {
   /*
