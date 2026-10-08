@@ -1,51 +1,184 @@
 import "dotenv/config";
-import { readInput } from "./utils/readInput.js";
+
+import http from "node:http";
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+
 import { parseExpedientMessages } from "./parsers/expedients.js";
 import { generateExpedient } from "./services/expedient.js";
 
-async function main() {
-  console.log("Generador de expedientes");
-  console.log("");
-  console.log("Pegá el mensaje y escribí FIN al terminar:");
-  console.log("");
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-  const message = await readInput();
+const PUBLIC_DIR = path.resolve(__dirname, "../public");
 
-  console.log("\nProcesando mensaje...");
+const PORT = 3000;
 
-  const expedients = parseExpedientMessages(message);
+const server = http.createServer(async (req, res) => {
+  /*
+   * API
+   */
 
-  console.log(
-    `\nSe encontraron ${expedients.length} expediente(s).`,
-  );
+  if (req.method === "POST" && req.url === "/api/expedientes") {
+    try {
+      let body = "";
 
-  for (const data of expedients) {
-    console.log(
-      `\nGenerando expediente ${data.contrato}...`,
-    );
+      req.on("data", (chunk) => {
+        body += chunk.toString();
+      });
 
-    const expedient = await generateExpedient(data);
+      req.on("end", async () => {
+        try {
+          const { message } = JSON.parse(body);
 
-    console.log("✓ Generado correctamente");
-    console.log("  Nombre:", expedient.name);
-    console.log("  URL:", expedient.url);
+          if (!message || typeof message !== "string") {
+            res.writeHead(400, {
+              "Content-Type": "application/json",
+            });
+
+            res.end(
+              JSON.stringify({
+                success: false,
+                error: "El campo 'message' es obligatorio.",
+              }),
+            );
+
+            return;
+          }
+
+          const expedients = parseExpedientMessages(message);
+
+          console.log(
+            `\nSe encontraron ${expedients.length} expediente(s).`,
+          );
+
+          const results = [];
+
+          for (const data of expedients) {
+            console.log(
+              `\nGenerando expediente ${data.contrato}...`,
+            );
+
+            const expedient = await generateExpedient(data);
+
+            console.log("✓ Generado correctamente");
+
+            results.push({
+              contrato: data.contrato,
+              name: expedient.name,
+              url: expedient.url,
+            });
+          }
+
+          res.writeHead(200, {
+            "Content-Type": "application/json",
+          });
+
+          res.end(
+            JSON.stringify({
+              success: true,
+              results,
+            }),
+          );
+        } catch (error) {
+          console.error(error);
+
+          res.writeHead(500, {
+            "Content-Type": "application/json",
+          });
+
+          res.end(
+            JSON.stringify({
+              success: false,
+              error: "Ocurrió un error al generar los expedientes.",
+            }),
+          );
+        }
+      });
+
+      return;
+    } catch (error) {
+      console.error(error);
+
+      res.writeHead(500, {
+        "Content-Type": "application/json",
+      });
+
+      res.end(
+        JSON.stringify({
+          success: false,
+          error: "Ocurrió un error inesperado.",
+        }),
+      );
+
+      return;
+    }
   }
 
+  /*
+   * Frontend
+   */
 
-  // console.log("Datos obtenidos:");
-  // console.log(data);
+  if (req.method === "GET") {
+    let fileName = "index.html";
 
-  // console.log("\nGenerando expediente...");
+    if (req.url === "/style.css") {
+      fileName = "style.css";
+    }
 
-  // const expedient = await generateExpedient(data);
+    if (req.url === "/app.js") {
+      fileName = "app.js";
+    }
 
-  // console.log("\n✓ Expediente generado correctamente");
-  // console.log("Nombre:", expedient.name);
-  // console.log("URL:", expedient.url);
-}
+    try {
+      const filePath = path.join(PUBLIC_DIR, fileName);
 
-main().catch((error) => {
-  console.error("\nError:");
-  console.error(error);
-  process.exit(1);
+      const file = await fs.readFile(filePath);
+
+      const contentTypes: Record<string, string> = {
+        "index.html": "text/html; charset=utf-8",
+        "style.css": "text/css; charset=utf-8",
+        "app.js": "application/javascript; charset=utf-8",
+      };
+
+      res.writeHead(200, {
+        "Content-Type": contentTypes[fileName],
+      });
+
+      res.end(file);
+
+      return;
+    } catch (error) {
+      console.error(error);
+
+      res.writeHead(404, {
+        "Content-Type": "text/plain; charset=utf-8",
+      });
+
+      res.end("Archivo no encontrado.");
+
+      return;
+    }
+  }
+
+  /*
+   * Ruta no encontrada
+   */
+
+  res.writeHead(404, {
+    "Content-Type": "application/json; charset=utf-8",
+  });
+
+  res.end(
+    JSON.stringify({
+      error: "Ruta no encontrada.",
+    }),
+  );
+});
+
+server.listen(PORT, () => {
+  console.log(
+    `\nServidor iniciado en http://localhost:${PORT}`,
+  );
 });

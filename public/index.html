@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>Generador de expedientes</title>
+
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+
+  <body>
+    <main class="container">
+      <header class="header">
+        <h1>Generador de expedientes</h1>
+        <p>
+          Pegá uno o varios expedientes para generar los documentos en Google
+          Drive.
+        </p>
+      </header>
+
+      <section class="card">
+        <label for="expedients">
+          Expedientes
+        </label>
+
+        <textarea
+          id="expedients"
+        ></textarea>
+
+        <button id="generate-button" type="button">
+          Generar expedientes
+        </button>
+      </section>
+
+      <section id="status" class="status hidden"></section>
+
+      <section id="results" class="results hidden">
+        <h2>Expedientes generados</h2>
+
+        <div id="results-list"></div>
+      </section>
+    </main>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
