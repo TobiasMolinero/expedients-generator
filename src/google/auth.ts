@@ -47,13 +47,8 @@ export async function getGoogleAuth() {
 
     const { client_id, client_secret } = credentials.installed;
 
-    const auth = new google.auth.OAuth2(
-        client_id,
-        client_secret,
-    );
-
     const server = http.createServer();
-
+    
     await new Promise<void>((resolve) => {
         server.listen(0, "localhost", () => {
             resolve();
@@ -67,9 +62,12 @@ export async function getGoogleAuth() {
     }
 
     const redirectUri = `http://localhost:${address.port}`;
-
-    auth.redirectUri = redirectUri;
-
+    const auth = new google.auth.OAuth2(
+        client_id,
+        client_secret,
+        redirectUri,
+    );
+    
     const authUrl = auth.generateAuthUrl({
         access_type: "offline",
         scope: SCOPES,
